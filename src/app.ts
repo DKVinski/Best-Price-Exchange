@@ -1,9 +1,6 @@
 #!/usr/bin/env node
 
 //token/coin/cryptocurrency input
-    
-
-
 const input = async() => {
   
   'use strict'
@@ -26,7 +23,7 @@ const input = async() => {
       })
     }
 
-  console.log(await questionn());
+  await questionn();
   rl.close();
   return curency;
 }
@@ -34,29 +31,31 @@ const input = async() => {
 
 //checks if input is valid and returns coin Id
 const inputIdCheck = async (input:String, coinsIdList:Array<string>, coinsSymbolList:Array<string>) => {
-  return new Promise<string>(() => {
+  return new Promise<string>((resolve, reject) => {
 
     var isValid:Boolean = false;
     let i:number;
+    var result:string = "";
 
     for(i = 0; i < coinsIdList.length; i++)
     {
-        if(input == coinsSymbolList[i].toLowerCase())
+        if(input == coinsSymbolList[i])
         {
           isValid = true;
-          input = coinsIdList[i].toLowerCase();
-          return input;
+          result = coinsIdList[i];
+          resolve(result);
         }
-        else if(input == coinsIdList[i].toLowerCase())
+        else if(input == coinsIdList[i])
         {
           isValid = true;
-          return input;
+          result = coinsIdList[i]
+          resolve(result);
         }
     }
     if(isValid == false)
     {
       console.log('Input is not valid cryptocurrency/token/coin.\n');
-      return '';
+      process.exit(0);
     }
   })
 
@@ -64,23 +63,25 @@ const inputIdCheck = async (input:String, coinsIdList:Array<string>, coinsSymbol
 
 //checks if input is correct and returns coin symbol
 const inputSymbolCheck = async (input:String, coinsSymbolList:Array<string>, coinsIdList:Array<string>) => {
-  return new Promise<string>(() => {
+  return new Promise<string>((resolve, reject) => {
 
     var isValid:Boolean = false;
     let i:number;
+    var result:string = "";
   
-    for(i = 0; i < coinSymbolList.length; i++)
+    for(i = 0; i < coinsSymbolList.length; i++)
     {
-        if(input == coinsIdList[i].toLowerCase())
+        if(input == coinsIdList[i])
         {
           isValid = true;
-          input = coinsSymbolList[i].toLowerCase();
-          return input;
+          result = coinsSymbolList[i]
+          resolve(result);
         }
-        else if(input == coinsSymbolList[i].toLowerCase())
+        else if(input == coinsSymbolList[i])
         {
           isValid = true;
-          return input;
+          result = coinsSymbolList[i]
+          resolve(result);
         }
     }
     if(isValid == false)
@@ -91,17 +92,6 @@ const inputSymbolCheck = async (input:String, coinsSymbolList:Array<string>, coi
   })
   
 }
-
-//collects list of all exchanges and returns exchangesList (Array with list of all exchanges)
-// var exchangeList = async(exchangesList = new Array()) => {
-
-//   const coingecko = require('coingecko-api');
-//   const ciongeckoclient = new coingecko();
-
-//     let res = await ciongeckoclient.exchanges.list();
-//     exchangesList = res.data;
-//     return exchangesList;
-// }
 
 //collects list of all coins and returns coinsList (Array with list of all coins)
 var coinIdList = async() => {
@@ -114,7 +104,7 @@ var coinIdList = async() => {
   var coinsList = new Array();
   for(i = 0; i < res.data.length; i++)
   {
-    coinsList[i] = res.data[i].id.toString();
+    coinsList[i] = res.data[i].id.toString().toLowerCase();
   }
   return coinsList;
 }
@@ -129,93 +119,95 @@ var coinSymbolList = async() => {
   var coinsList = new Array();
   for(i = 0; i < res.data.length; i++)
   {
-    coinsList[i] = res.data[i].symbol.toString();
+    coinsList[i] = res.data[i].symbol.toString().toLowerCase();
   }
   return coinsList;
 }
 
-  //logic -> TODO
-  var logic = async(currencyId:any, currencySymbol:any) => {
-    return new Promise<Array<any>> (() => {
+  //logic
+  const logic = async(currencyId:string, currencySymbol:string) => {
+    return new Promise<string>(async(resolve, reject) => {
     const coingecko = require('coingecko-api');
     const ciongeckoclient = new coingecko();
 
-    var result = new Array();
+    var result:string = "";
 
     var currentPrice:number = 0;
-    var currentExchenage = "";
+    var currentExchenage:string = "";
 
     var price:number = 0;
     var exchange:string = "";
     var atLeastOneExchange:boolean = false;
 
-    var allCoinTickers = new Array();
+    var allCoinTickers = new Array<string>();
 
     var coinTickers = async () => {
-      var res = await ciongeckoclient.coins.fetchTickers(currencyId);
-      console.log(res.tickers);
-      allCoinTickers = JSON.parse(res.tickers);
+      var res = await ciongeckoclient.coins.fetchTickers(currencyId, '', '', 61);
+      let i: number;
+       for(i = 0; i < res.data.tickers.length; i++)
+       {
+         allCoinTickers[i] = res.data.tickers[i].base.toLowerCase() + '-' + res.data.tickers[i].target + '-' + res.data.tickers[i].market.name + '-' + res.data.tickers[i].last.toString();
+       }
+      console.log(allCoinTickers.length);
+      //console.log(allCoinTickers)
     }
 
-    coinTickers();
+    await coinTickers();
 
-    var tickersNumber:number = 0;
-
-    tickersNumber = allCoinTickers.length;
-
-    let i;
-    for(i = 0; i < tickersNumber; i++)
+     let i;
+     let parsed = new Array<string>(); //base, target, exchange, price
+    for(i = 0; i < allCoinTickers.length; i++)
     {
+       parsed= allCoinTickers[i].split('-');
+       //console.log(parsed)
 
-      if(allCoinTickers[i].base == currencySymbol && (allCoinTickers[i].target == 'USD' || allCoinTickers[i].target == 'USDT')) 
-      {
+      if(parsed[0] == currencySymbol && (parsed[1] == 'USD' || parsed[1] == 'USDT')) 
+       {
         atLeastOneExchange = true;
-        price = allCoinTickers[i].last;
-        exchange = allCoinTickers[i].market.name;
+        price = parseInt(parsed[3]);
+         exchange = parsed[2];
 
-        if(price > currentPrice)
-        {
-          currentPrice = price;
-          currentExchenage = exchange;
-        }
-
+         if(price > currentPrice)
+         {
+           currentPrice = price;
+           currentExchenage = exchange;
+         }
       }
-      
-    }
+     }
 
     if(atLeastOneExchange = false)
     {
-      console.log('There is no exchange that ofers transaction ' + currencyId + ' to USD.\n');
-      process.exit(0);
-    }
+       console.log('There is no exchange that ofers transaction ' + currencyId + ' to USD.\n');
+        process.exit(0);
+     }
 
-    result[0] = currentExchenage;
-    result[1] = currentPrice;
-    return result;
+      result += currentExchenage;
+      result += ' ' + currentPrice.toString();
+      console.log(result);
+     resolve(result);
   }
 )}  
 
 //output of results
-var output = (resultExchange:string, resultPrice:number) => {
-    console.log(resultExchange + ' ' + resultPrice + '$' + '\n');
+var output = (result:string) => {
+    console.log('\n\n' + result + '$' + '\n');
 }
 
 //main function
 const main = async () => {
-  var result = new Array();
-  result[0] = ""; //result exchange
-  result[1] = 0; //result price
-  //var listOfExchanges = await exchangeList();
+  var result:string = "";
   var currency:string = await input();
   var listOfCoinsId = new Array<string>();
   listOfCoinsId = await coinIdList();
   var listOfCoinsSymbol = new Array<string>()
   listOfCoinsSymbol = await coinSymbolList();
-  var coinId:string = await inputIdCheck(currency, listOfCoinsId, listOfCoinsSymbol);
-  var coinSymbol:string = await inputSymbolCheck(currency, listOfCoinsSymbol, listOfCoinsId);
+  var coinId:string = "";
+  coinId = await inputIdCheck(currency, listOfCoinsId, listOfCoinsSymbol);
+  console.log('currency '+ currency)
+  var coinSymbol:string = "";
+  coinSymbol = await inputSymbolCheck(currency, listOfCoinsSymbol, listOfCoinsId);
   result = await logic(coinId, coinSymbol);
-
-  output(result[0], result[1]);
+  output(result);
   }
 
 
